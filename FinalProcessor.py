@@ -1,18 +1,19 @@
+# Import Required Packages
 from Bio import SeqIO
 from Bio import Entrez
 import csv
 from csv import DictReader
 
-
+# Function content which splits a sequence into triplets
 def content(seq, frame):
     for i in range(frame - 1, len(seq) - 2, 3):
         yield seq[i:i + 3]
 
 
-def codon(sasp_list, codon_box_list, enst_id, refseq_id, kozak):
+def codon(sasp_list, codon_box_list, hgnc,  refseq_id, kozak):
     # stores 'ENSG ID', 'RefSeq ID', 'CDS Length'
-    new_row = [enst_id, refseq_id, len(sasp_list) * 3]
-    seq_row = [enst_id]
+    new_row = [hgnc, refseq_id, len(sasp_list) * 3]
+    seq_row = [refseq_id]
 
     # counts frequency of each codon in sequence and adds to new row for the output
     for codon in codon_box_list:
@@ -25,8 +26,9 @@ def codon(sasp_list, codon_box_list, enst_id, refseq_id, kozak):
     writer.writerow(new_row)  # adds new row to output csv file for RefSeqID read
     n_writer.writerow(seq_row)
 
-
-Entrez.email = "meghanakarumuri@gmail.com"
+email = 'meghanakarumuri@gmail.com'
+fname = "Gestalt_dgtpn.csv"
+Entrez.email = email
 added_ref_seq = []
 
 box_dict = {
@@ -41,9 +43,9 @@ box_dict = {
 }
 
 # Creates output csv file for frequencies/kozak -- CHANGE NAME OF OUTPUT FILE TO DESIRED NAME
-with open('processed_isoforms.csv', 'w', newline='') as f:
+with open('freq_' + str(fname), 'w', newline='') as f:
     writer = csv.writer(f)
-    row = ['ENST ID', 'RefSeq ID', 'CDS Length']  # initializes first three columns
+    row = ['hgnc_symbol', 'RefSeq ID', 'CDS Length']  # initializes first three columns
 
     # uses looping to add in name of each codon as a column
     for i in box_dict.keys():
@@ -53,19 +55,19 @@ with open('processed_isoforms.csv', 'w', newline='') as f:
     # writes titles of columns into output csv file
     writer.writerow(row)
     # Creates output csv file for 64 char encoding -- CHANGE NAME OF OUTPUT FILE TO DESIRED NAME
-    with open('sequence_processed.csv', 'w', newline='') as nf:
+    with open('seq_' + str(fname), 'w', newline='') as nf:
         n_writer = csv.writer(nf)
-        n_row = ['ENST ID']
+        n_row = ['RefSeq ID']
 
         n_writer.writerow(n_row)
 
-        with open('refseqs2.csv', 'r') as read_obj:
+        with open(fname, 'r') as read_obj:
             csv_dict_reader = DictReader(read_obj)
 
             # Runs code to fetch sequence for each RefSeqID
             for row in csv_dict_reader:
-                enst_id = row['ENST ID']
-                refseq = row['RefSeq ID']
+                refseq = row['refseq_mrna']
+                hgnc = row['hgnc_symbol']
 
                 # Switch the line below for a gtf file (handle3 = name of genbank file) to directly open a gbk file
                 handle3 = Entrez.efetch(db="nucleotide", id=refseq, rettype="gb", retmode="text")
@@ -86,10 +88,10 @@ with open('processed_isoforms.csv', 'w', newline='') as f:
                 else:
                     seq = str(record3.seq[start_location:end_location])  # obtain sequence from record
                     kozak = str(record3.seq[(start_location - 6): (start_location + 4)])
-                    print("Sequence Obtained!\n")
-                    print("Sequence: " + seq)
+                    # print("Sequence Obtained!\n")
+                    # print("Sequence: " + seq)
                     print("Kozak Sequence: " + kozak)
                 SASP = list(content(seq, 1))  # SASP has a list of separated codons in the sequence
-                codon(SASP, box_dict.keys(), enst_id, refseq, list(kozak))
+                codon(SASP, box_dict.keys(), hgnc, refseq, list(kozak))
+print("Finished Codon Processing! See <seq_" + str(fname) + " freq_" + str(fname) + "> for outputs.")
 
-print("Finished Codon Processing! See <processed_isoforms.csv> for output.")
